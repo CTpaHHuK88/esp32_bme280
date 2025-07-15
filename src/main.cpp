@@ -13,11 +13,11 @@
 bool statusSendTbotMsg = false; //Инициализируем переменную для проверки статуса отправки сообщения Telegram
 const int adcPin = 34; // GPIO34 (аналоговый пин) для считывания напряжения.
 const int pinBMEOn = 26;
-const char* CHAT_ID = "";
-const char* SSID = "";
-const char* PASSWORD_WIFI = "";
+const char* CHAT_ID = "-1002468716459";
+const char* SSID = "pnh";
+const char* PASSWORD_WIFI = "V33b8e37";
 const char* ESP_HOSTNAME = "ESP32Meteo"; //Устанавливаем Имя хоста
-const char* mqtt_server = "";
+const char* mqtt_server = "10.8.0.10";
 const int mqtt_port = 1883;
 const char* mqtt_topic = "meteo/upload";
 RTC_DATA_ATTR int SCHET_MESSAGE = 0;
