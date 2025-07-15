@@ -8,17 +8,18 @@
 
 #define SEALEVELPRESSURE_HPA (1013.25)
 #define uS_TO_S_FACTOR 1000000  // Коэффициент перевода микросекунд в секунды
-#define TIME_TO_SLEEP  300        // Время сна в секундах
+#define TIME_TO_SLEEP  120        // Время сна в секундах
 
 bool statusSendTbotMsg = false; //Инициализируем переменную для проверки статуса отправки сообщения Telegram
 const int adcPin = 34; // GPIO34 (аналоговый пин) для считывания напряжения.
+const int pinBMEOn = 26;
 const char* CHAT_ID = "";
 const char* SSID = "";
 const char* PASSWORD_WIFI = "";
-const char* ESP_HOSTNAME = ""; //Устанавливаем Имя хоста
+const char* ESP_HOSTNAME = "ESP32Meteo"; //Устанавливаем Имя хоста
 const char* mqtt_server = "";
-const int mqtt_port = ;
-const char* mqtt_topic = "";
+const int mqtt_port = 1883;
+const char* mqtt_topic = "meteo/upload";
 RTC_DATA_ATTR int SCHET_MESSAGE = 0;
 
 WiFiClient espClient;
@@ -88,6 +89,9 @@ void sendMQTTMessage(const char* message){
 void setup() {
   Serial.begin(115200);  
   connectWiFi();  
+  pinMode(pinBMEOn, OUTPUT);
+  digitalWrite(pinBMEOn, HIGH);
+  delay(1000);
   client.setServer(mqtt_server, mqtt_port);
   reconnectMQTT();
   if (!bme.begin(0x76)) { // Адрес 0x76 или 0x77
@@ -95,26 +99,9 @@ void setup() {
     while (1);
   }
 
+  double mm = (bme.readPressure() / 100.0F)/ 1.33322;
 
-    //Serial.print("Температура = ");
-    //Serial.print(bme.readTemperature());
-    //Serial.println(" *C");
-    
-    double mm = (bme.readPressure() / 100.0F)/ 1.33322;
-
-    //Serial.print("Давление = ");
-    //Serial.print(mm);
-    //Serial.println(" mmHg");
-    
-    //Serial.print("Влажность = ");
-    //Serial.print(bme.readHumidity());
-    //Serial.println(" %");
-    
-    //Serial.print("Высота = ");
-    //Serial.print(bme.readAltitude(SEALEVELPRESSURE_HPA));
-    //Serial.println(" m");  
-    //Serial.println();
-    delay(1000);
+  delay(1000);
 
   /*Формируем json документ. Для работы используем библиотеку: 
   #include <ArduinoJson.h>*/
@@ -142,17 +129,26 @@ void setup() {
   в ней не будет пробелов или разрывов строк [5]. Естественно, такая строка занимает меньше места, 
   но её гораздо сложнее читать человеку. Если вы хотите получить удобочитаемую строку
   (подходящую для чтения человеком), вам следует использовать функцию serializeJsonPretty.*/
-    serializeJson(doc, buffer);
+  serializeJson(doc, buffer);
 
-    //Serial.print("Напряжение:");
-    //Serial.println(readPowerOnPin());
       /*В завершение мы выведем содержимое, полученное в нашем буфере символов. Должна отображаться строка, 
   содержащая наш документ JSON.*/
     //Serial.println(buffer);
-    client.loop();
+  client.loop();
 
-    sendMQTTMessage(buffer);
-   
+  sendMQTTMessage(buffer);
+  
+  // После успешной отправки MQTT:
+  if (client.connected()) {
+    client.disconnect();  // Отключаем MQTT
+  }
+  WiFi.disconnect(true);  // Отключаем WiFi
+  WiFi.mode(WIFI_OFF);
+
+
+  delay(100);             // Даём время на завершение операций
+  digitalWrite(pinBMEOn, LOW);
+  delay(1000);   
   esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
   delay(1000);
   esp_deep_sleep_start();  // Переход в Deep Sleep
